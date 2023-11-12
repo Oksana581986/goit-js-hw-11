@@ -10,14 +10,21 @@ const PER_PAGE = 40;
 const searchForm = document.getElementById('search-form');
 const galleryContainer = document.querySelector('.gallery');
 const loadMoreBtn = document.querySelector('.load-more');
+const lightbox = new SimpleLightbox('.photo-card', {
+  disableScroll: false,
+  history: false,
+  nextOnImageClick: true,
+  captionsData: 'alt',
+  captionPosition: 'bottom',
+  captionDelay: 250,
+ });
 
 let currentPage = 1;
 let currentQuery = '';
 
 const fetchData = async (query, page = 1) => {
-  try {
-    const response = await axios.get(BASE_URL, {
-      params: {
+      const response = await axios.get(BASE_URL, {
+        params: {
         key: API_KEY,
         q: query,
         image_type: 'photo',
@@ -27,13 +34,8 @@ const fetchData = async (query, page = 1) => {
         per_page: PER_PAGE,
       },
     });
-
     return response.data;
-  } catch (error) {
-    console.error('Error fetching data:', error);
-    return null;
-  }
-};
+ };
 
 const renderGallery = (images) => {
   if (images.length === 0) {
@@ -57,7 +59,7 @@ const renderGallery = (images) => {
     })
     .join('');
 
-  if (currentPage === 1) {
+   if (currentPage === 1) {
     galleryContainer.innerHTML = galleryMarkup;
   } else {
     galleryContainer.innerHTML += galleryMarkup;
@@ -65,21 +67,13 @@ const renderGallery = (images) => {
 
   const { height: cardHeight } = galleryContainer.firstElementChild.getBoundingClientRect();
   window.scrollBy({ top: cardHeight * 2, behavior: 'smooth' });
-  
-  const lightbox = new SimpleLightbox('.photo-card', {
-    disableScroll: false,
-    history: false,
-    nextOnImageClick: true,
-    captionsData: 'alt',
-    captionPosition: 'bottom',
-    captionDelay: 250,
-   });
 
- lightbox.refresh();
+  lightbox.refresh();
 };
 
 const handleFormSubmit = async (event) => {
   event.preventDefault();
+  try {
   currentQuery = event.target.elements.searchQuery.value.trim();
 
   if (!currentQuery) {
@@ -92,19 +86,28 @@ const handleFormSubmit = async (event) => {
 
   const data = await fetchData(currentQuery, currentPage);
 
-  if (data && data.hits.length > 0) {
+    if (data && data.hits.length > 0) {
     renderGallery(data.hits);
-    loadMoreBtn.style.display = 'block'; 
+    if (data.hits.length < PER_PAGE) {
+      loadMoreBtn.style.display = 'none';
+    } else {
+      loadMoreBtn.style.display = 'block';
+    }
     Notiflix.Notify.success(`Hooray! We found ${data.totalHits} images.`);
   } else {
     Notiflix.Notify.failure('Sorry, there are no images matching your search query. Please try again.');
   }
+} catch (error) {
+  console.error('Error fetching data:', error);
+  return null;
+}
 };
 
 const handleLoadMoreClick = async () => {
+  try {
   currentPage++;
   loadMoreBtn.disabled = true;
-
+ 
   const data = await fetchData(currentQuery, currentPage);
 
   if (data && data.hits.length > 0) {
@@ -115,6 +118,11 @@ const handleLoadMoreClick = async () => {
   }
 
   loadMoreBtn.disabled = false;
+
+} catch (error) {
+  console.error('Error fetching data:', error);
+  return null;
+}
 };
 
 searchForm.addEventListener('submit', handleFormSubmit);
